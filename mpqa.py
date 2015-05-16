@@ -38,6 +38,32 @@ FEAT_COLS = [
     'topic',        # topic (if available)
 ]
 
+# tuple of (feature label, keep for JSON, handler)
+# ``handler`` is a ``Doc`` method which will be called with self, and a Polar
+# named tuple as arguments and returns the feature value
+FEAT_COLS_2 = [
+        ('topic', False, lambda k, _: k.topic)
+        ('word', False, lambda k, p: k._nlp.vocab[p.token.lower].id)
+        ('word_', False, lambda _, p: p.token.lower_)
+        ('pos', True, lambda _, p: p.token.pos)
+        ('pos_', False, lambda _, p: p.token.pos_)
+    ('before', True, )
+    ('before_', False, )
+    ('after', True, )
+    ('after_', False, )
+    ('context', False, )
+    ('context_', False, )
+    ('pre_neg', True, )
+    ('post_neg', True, )
+    ('pri_pol', True, )
+    ('rel', True, )
+    ('c_pol', True)
+    ('is_int', True, )
+    ('prec_int', True, )
+    ('prec_adj', True, )
+    ('prec_adv', True, )
+]
+
 
 Annot = namedtuple('Annot', ['idnum', 'start', 'end', 'ref',
                              'kind', 'gate', 'attr'])
