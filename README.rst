@@ -43,7 +43,7 @@ Columns
 **after_**: string
     Word following the subjectivity clue
 **context**: tuple of ints
-    (before, word, after) as vocabulary ids
+    (before, word, after) as vocabulary ids (this is redundant with the individual tokens but helps for visually exploring the data set).
 **context_**: tuple if strings
     (before, word, after)
 **pre_neg**: boolean
@@ -84,13 +84,39 @@ The python script `mpqa.py` was used to construct the labeled feature vectors in
 for instructions. Running the script requires (see `Licenses for Corpus Content and Annotations`_):
 
 * Third party python packages `pandas`_ and `spaCy`_.
+
 * The annotated `MPQA Corpus`_.
 
-* A 'doclist' file that lists all documents to be included in the data set (concatenate and dedupe the partially overlapping doclists that come with MPQA Corpus).
+* A 'doclist' file that lists all documents to be included in the data set  (concatenate and dedupe the partially overlapping doclists that come with MPQA Corpus or use the `doclist.combinedUnique` file in this repo).
 
-* The `MPQA Subjectivity Lexicon`_.
+* The `MPQA Subjectivity Lexicon`_ (provided as `subjclues.tff` in this repo).
 
-* A list of intensifiers, available in the `MPQA Arguing Lexicon`_ (file `intensifiers.tff`; the python script will parse its format).
+* A list of intensifiers, available in the `MPQA Arguing Lexicon`_ (file `intensifiers.tff`).
+
+To use the `mpqa` module from within your own script follow this example::
+
+    from __future__ import print_function
+    import pandas as pd
+    import mpqa
+
+    df = pd.DataFrame(columns=mpqa.FEAT_COLS)
+    for path, fname, topic in mpqa.iter_docs('doclist.combinedUnique'):
+        print(path, fname)
+        doc = mpqa.Doc(
+                mpqa_dir='database.mpqa.2.0',
+                path=path,
+                fname=fname,
+                topic=topic,
+                sc_path='subjclues.tff',
+                int_path='intensifiers.tff')
+        df = df.append(doc.feat_df)
+
+    sparse_cols = ['word', 'before', 'after']
+    pack_cols = mpqa.pack_df(df, sparse_cols)
+    for c in sparse_cols:
+        df['p' + c] = pack_cols[c]
+
+This assumes that you have downloaded and extracted the `MPQA Corpus`_ to `database.mpqa.2.0`. The resulting DataFrame `df` will be the same as the one that can be obtained by unpickling `mpqa_features.pickle`.
 
 
 Licenses for Corpus Content and Annotations
