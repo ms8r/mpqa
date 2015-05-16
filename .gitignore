@@ -1,0 +1,10 @@
+arglex*
+database.mpqa*
+effectwordnet
+subjectivity*
+*.zip
+*.pdf
+*.gz
+*~
+*.pyc
+.ipynb_checkpoints
