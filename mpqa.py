@@ -495,12 +495,10 @@ def setup_parser_mkfeat(p):
     p.add_argument('--doclist', metavar='FILE',
                    type=argparse.FileType('r'), required=True,
                    help='path to doclist file')
-    p.add_argument('--format', choices=['pickle', 'json'], default='json',
+    p.add_argument('--format', choices=['pickle', 'json'], default='pickle',
                     help='format in which to output DataFrame; defaults to '
-                    'json; only word token ids (rather than the strings) '
-                    'will be retained; the ids can be mapped back to strings '
-                    'by using spaCy\'s English vocabulary (see '
-                    'http://honnibal.github.io/spaCy/)')
+                    'pickle; WARNING: JSON may not be able to (de-)serialize '
+                    'correctly')
     p.add_argument('--output', metavar='FILE',
                    type=argparse.FileType('w'), required=True,
                    help='output file in which to store DataFrame')

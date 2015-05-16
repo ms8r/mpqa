@@ -26,8 +26,6 @@ The index consists of tuples of the form `(path, document, count)` where `path` 
 Columns
 ~~~~~~~
 
-Note column labels with a '_' suffix will not be retained when writing the DataFrame to disk. These columns contain string representations of tokens for which integer ids are stored under the correponsing label without the '_' suffix. The integer ids can be mapped back to their (unicode) string representations by using `spaCy`_'s English vocabulary.
-
 **word**: int
     The subjectivity clue (id in the `spaCy`_ vocabulary)
 **word_**: string
@@ -99,11 +97,12 @@ Licenses for Corpus Content and Annotations
 -------------------------------------------
 
 The `download site`_ for the `MPQA Corpus`_ and annotations states the following licensing terms:
+
     The annotations in this data collection are copyrighted by the MITRE Corporation. User acknowledges and agrees that: (i) as between User and MITRE, MITRE owns all the right, title and interest in the Annotated Content, unless expressly stated otherwise; (ii) nothing in this Agreement shall confer in User any right of ownership in the Annotated Content; and (iii) User is granted a non-exclusive, royalty free, worldwide license (with no right to sublicense) to use the Annotated Content solely for academic and research purposes. This Agreement is governed by the law of the Commonwealth of Massachusetts and User agrees to submit to the exclusive jurisdiction of the Massachusetts courts.
 
     Note: The textual news documents annotated in this corpus have been collected from a wide range of sources and are not copyrighted by the MITRE Corporation. The user acknowledges that the use of these news documents is restricted to research and/or academic purposes only.
 
-The `MPQA Subjectivity Lexicon`_ and the `MPQA Arguing Lexicon`_ are provided under a GNU General Public License
+The `MPQA Subjectivity Lexicon`_ and the `MPQA Arguing Lexicon`_ are provided under a GNU General Public License.
 
 
 .. _MPQA Corpus: http://mpqa.cs.pitt.edu/
@@ -113,4 +112,3 @@ The `MPQA Subjectivity Lexicon`_ and the `MPQA Arguing Lexicon`_ are provided un
 .. _Wilson, Wiebe, and Hoffmann: http://www.cs.pitt.edu/~wiebe/pubs/papers/emnlp05polarity.pdf
 .. _download site: http://mpqa.cs.pitt.edu/corpora/mpqa_corpus/
 .. _pandas: https://pypi.python.org/pypi/pandas/0.15.2
-.. _spaCy: https://pypi.python.org/pypi/spacy/0.81
