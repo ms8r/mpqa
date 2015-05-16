@@ -466,13 +466,14 @@ def handle_mkfeat(args, **kwargs):
         df = df.append(doc.feat_df)
 
     # append columns with packed vocabulary references:
-    pack_cols = pack_df(df, ['word', 'before', 'after'])
-    df['pword'] = pack_cols['word']
-    df['pbefore'] = pack_cols['before']
-    df['after'] = pack_cols['after']
+    sparse_cols = ['word', 'before', 'after']
+    pack_cols = pack_df(df, sparse_cols)
+    for c in sparse_cols:
+        df['p' + c] = pack_cols[c]
 
     # save df:
     if args.format == 'json':
+        # TODO: reading JSON back still throws some error
         # drop text token columns as they screw up json encoding:
         keep_cols = [c for c in FEAT_COLS if not c.endswith('_')]
         keep_cols += ['pword', 'pbefore', 'pafter']
