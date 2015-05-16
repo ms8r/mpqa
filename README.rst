@@ -1,7 +1,7 @@
 Feature Set based on MPQA Corpus
 ================================
 
-`mpqa_features.pickle` is a serialized Pandas DataFrame with about 8000 labeled feature vectors that were derived from the annotated `MPQA Corpus`_ to model phrase and sentence level sentiment (polarity) in news and editorial content.
+``mpqa_features.pickle`` is a serialized Pandas DataFrame with about 8000 labeled feature vectors that were derived from the annotated `MPQA Corpus`_ to model phrase and sentence level sentiment (polarity) in news and editorial content.
 
 
 Basic Idea
@@ -15,13 +15,13 @@ The subjectivity clues were looked for in the approx. 700 documents in the exten
 Data Set
 --------
 
-The DataFrame in `mpqa_features.pickle` has the following structure:
+The DataFrame in ``mpqa_features.pickle`` has the following structure:
 
 
 Index
 ~~~~~
 
-The index consists of tuples of the form `(path, document, count)` where `path` and `document` identify the corpus document from which the record was generated and `count` is a running number within the document.
+The index consists of tuples of the form ``(path, document, count)`` where ``path`` and ``document`` identify the corpus document from which the record was generated and ``count`` is a running number within the document.
 
 Columns
 ~~~~~~~
@@ -31,9 +31,9 @@ Columns
 **word_**: string
     The subjectivity clue (i.e. an occurrence of one of the entries in the `MPQA Subjectivity Lexicon`_)
 **pos**: int
-    Part-of-speech (id as assigned by `spaCy`_ as a `token`'s `pos` attribute)
+    Part-of-speech (id as assigned by `spaCy`_ as a ``token``'s ``pos`` attribute)
 **pos_**: string
-    Part-of-speech tag (abbreviation as assigned by `spaCy`_ as a `token`'s `pos_`  attribute)
+    Part-of-speech tag (abbreviation as assigned by `spaCy`_ as a ``token``'s ``pos_``  attribute)
 **before**: int
     Word preceding the subjectivity clue (vocabulary id)
 **before_**: string
@@ -67,17 +67,17 @@ Columns
 **topic**: string
    Topic of the respective article (if available in the corpus annotations)
 **pword**: int
-   "Packed id" for `word` (the subjectivity clue). Between the `word`, `before` and `after` vocabulary ids there are 3,691 different ids, taken from a vocabulary with about 300,000 entries. The "packed" values map these ids onto consecutive integers between 0 and 3,690.
+   "Packed id" for ``word`` (the subjectivity clue). Between the ``word``, ``before`` and ``after`` vocabulary ids there are 3,691 different ids, taken from a vocabulary with about 300,000 entries. The "packed" values map these ids onto consecutive integers between 0 and 3,690.
 **pbefore**: int
-    Packed id for `before`
+    Packed id for ``before``
 **pbafter**: int
-    Packed id for `after`
+    Packed id for ``after``
 
 
 Python Script
 -------------
 
-The python script `mpqa.py` was used to construct the labeled feature vectors in `mpqa_features.pickle`. Run::
+The python script ``mpqa.py`` was used to construct the labeled feature vectors in ``mpqa_features.pickle``. Run::
 
     python mpqa mkfeat -h
 
@@ -87,13 +87,13 @@ for instructions. Running the script requires (see `Licenses for Corpus Content 
 
 * The annotated `MPQA Corpus`_.
 
-* A 'doclist' file that lists all documents to be included in the data set  (concatenate and dedupe the partially overlapping doclists that come with MPQA Corpus or use the `doclist.combinedUnique` file in this repo).
+* A 'doclist' file that lists all documents to be included in the data set  (concatenate and dedupe the partially overlapping doclists that come with MPQA Corpus or use the ``doclist.combinedUnique`` file in this repo).
 
-* The `MPQA Subjectivity Lexicon`_ (provided as `subjclues.tff` in this repo).
+* The `MPQA Subjectivity Lexicon`_ (provided as ``subjclues.tff`` in this repo).
 
-* A list of intensifiers, available in the `MPQA Arguing Lexicon`_ (file `intensifiers.tff`).
+* A list of intensifiers, available in the `MPQA Arguing Lexicon`_ (file ``intensifiers.tff``).
 
-To use the `mpqa` module from within your own script follow this example::
+To use the ``mpqa`` module from within your own script follow this example::
 
     from __future__ import print_function
     import pandas as pd
@@ -116,7 +116,7 @@ To use the `mpqa` module from within your own script follow this example::
     for c in sparse_cols:
         df['p' + c] = pack_cols[c]
 
-This assumes that you have downloaded and extracted the `MPQA Corpus`_ to `database.mpqa.2.0`. The resulting DataFrame `df` will be the same as the one that can be obtained by unpickling `mpqa_features.pickle`.
+This assumes that you have downloaded and extracted the `MPQA Corpus`_ to ``database.mpqa.2.0``. The resulting DataFrame ``df`` will be the same as the one that can be obtained by unpickling ``mpqa_features.pickle``.
 
 
 Licenses for Corpus Content and Annotations
