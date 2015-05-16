@@ -26,51 +26,51 @@ The index consists of tuples of the form ``(path, document, count)`` where ``pat
 Columns
 ~~~~~~~
 
-**word**: int
+``word``: int
     The subjectivity clue (id in the `spaCy`_ vocabulary)
-**word_**: string
+``word_``: string
     The subjectivity clue (i.e. an occurrence of one of the entries in the `MPQA Subjectivity Lexicon`_)
-**pos**: int
+``pos``: int
     Part-of-speech (id as assigned by `spaCy`_ as a ``token``'s ``pos`` attribute)
-**pos_**: string
+``pos_``: string
     Part-of-speech tag (abbreviation as assigned by `spaCy`_ as a ``token``'s ``pos_``  attribute)
-**before**: int
+``before``: int
     Word preceding the subjectivity clue (vocabulary id)
-**before_**: string
+``before_``: string
     Word preceding the subjectivity clue
-**after**: int
+``after``: int
     Word following the subjectivity clue (vocabulary id)
-**after_**: string
+``after_``: string
     Word following the subjectivity clue
-**context**: tuple of ints
+``context``: tuple of ints
     (before, word, after) as vocabulary ids (this is redundant with the individual tokens but helps for visually exploring the data set).
-**context_**: tuple if strings
+``context_``: tuple if strings
     (before, word, after)
-**pre_neg**: boolean
+``pre_neg``: boolean
     True if there is a negating word within four tokens ahead of the subjectivity clue (not counting double negations such as "not only")
-**post_neg**: boolean
+``post_neg``: boolean
     True if there is a negating word within four tokens after of the subjectivity clue
-**pri_pol**: string
+``pri_pol``: string
     Prior polarity as given in the `MPQA Subjectivity Lexicon`_ (possible values are 'positive', 'negative', 'both', and 'neutral')
-**rel**: string
+``rel``: string
     Reliability class as given in the `MPQA Subjectivity Lexicon`_ (possible values are 'strongsubj', 'weaksubj')
-**c_pol**: float
+``c_pol``: float
     Contextual polarity, derived from the contextual polarity and intensity entries in the `MPQA Corpus`_: uses 1.0 for positive and -1.0 for neagtive polarity (0 for neutral) and multiplies with the intensity annotation (0 for low, 0.75 for medium, 1.5 for high, and 2.0 for extreme).
-**is_int**: boolean
+``is_int``: boolean
     True if the subjectivity clue itself is an intensifier. The list of itensifiers is taken from the `MPQA Arguing Lexicon`_.
-**prec_int**: boolean
+``prec_int``: boolean
    True if subjectivity clue is preceded by an intensifier
-**prec_adj**: boolean
+``prec_adj``: boolean
    True if subjectivity clue is preceded by an adjective
-**prec_adv**: boolean
+``prec_adv``: boolean
    True if subjectivity clue is preceded by an adverb
-**topic**: string
+``topic``: string
    Topic of the respective article (if available in the corpus annotations)
-**pword**: int
+``pword``: int
    "Packed id" for ``word`` (the subjectivity clue). Between the ``word``, ``before`` and ``after`` vocabulary ids there are 3,691 different ids, taken from a vocabulary with about 300,000 entries. The "packed" values map these ids onto consecutive integers between 0 and 3,690.
-**pbefore**: int
+``pbefore``: int
     Packed id for ``before``
-**pbafter**: int
+``pbafter``: int
     Packed id for ``after``
 
 
