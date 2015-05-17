@@ -38,32 +38,6 @@ FEAT_COLS = [
     'topic',        # topic (if available)
 ]
 
-# tuple of (feature label, keep for JSON, handler)
-# ``handler`` is a ``Doc`` method which will be called with self, and a Polar
-# named tuple as arguments and returns the feature value
-FEAT_COLS_2 = [
-        ('topic', False, lambda k, _: k.topic)
-        ('word', False, lambda k, p: k._nlp.vocab[p.token.lower].id)
-        ('word_', False, lambda _, p: p.token.lower_)
-        ('pos', True, lambda _, p: p.token.pos)
-        ('pos_', False, lambda _, p: p.token.pos_)
-    ('before', True, )
-    ('before_', False, )
-    ('after', True, )
-    ('after_', False, )
-    ('context', False, )
-    ('context_', False, )
-    ('pre_neg', True, )
-    ('post_neg', True, )
-    ('pri_pol', True, )
-    ('rel', True, )
-    ('c_pol', True)
-    ('is_int', True, )
-    ('prec_int', True, )
-    ('prec_adj', True, )
-    ('prec_adv', True, )
-]
-
 
 Annot = namedtuple('Annot', ['idnum', 'start', 'end', 'ref',
                              'kind', 'gate', 'attr'])
@@ -215,8 +189,9 @@ class Doc(object):
     _pol_map = {'negative': -1, 'positive': 1}
     _int_map = {'low': 0, 'medium': 0.75, 'high': 1.5, 'extreme': 2}
 
-    _negations = set(['no', 'not', 'neither', 'nor', 'nobody', 'none', 'n\'t'])
-    _doub_negs = set(['not only'])
+    _negations = set([u'no', u'not', u'neither', u'nor', u'nobody', u'none',
+                      u'nothing', u'n\'t'])
+    _doub_negs = set([u'not only'])
     # number of tokens to check before and after for neagtion:
     _neg_span = 4
 
@@ -324,6 +299,48 @@ class Doc(object):
         self._polars = sc_tokens
         return self._polars
 
+    def _context(self, ti, max_prob=0, keep_neg=True, skip_punct=False):
+        """
+        Returns a (before, after) tuple of the two tokens surrounding the token
+        with the index ti. Only tokens with a probability of less than
+        ``max_prob`` will be considered. Unless ``keep_neg`` is ``False``
+        negations will be kept independent of their probability. Whitespace
+        tokens will be ignored. If ``skip_punct`` is True, punctuation will
+        also be ignored. Ig no token is found ``None`` is returned in its
+        position.
+        """
+        num_toks = len(self.tokens)
+
+        def check(t):
+            if ((not skip_punct or t.pos_ != u'PUNCT') and
+                     (t.prob <= max_prob or
+                     (t.lower_ in self._negations and keep_neg) or
+                     (not skip_punct and t.pos_ == u'PUNCT')) and
+                     not t.string.isspace()):
+                return True
+            else:
+                return False
+
+        before = None
+        i = 1
+        while ti - i >= 0:
+            t = self.tokens[ti - i]
+            if check(t):
+                before = t
+                break
+            i += 1
+
+        after = None
+        i = 1
+        while ti + i < num_toks:
+            t = self.tokens[ti + i]
+            if check(t):
+                after = t
+                break
+            i += 1
+
+        return (before, after)
+
     @property
     def features(self):
         """
@@ -353,15 +370,16 @@ class Doc(object):
             feats['rel'] = p.rel
             feats['is_int'] = self._in.lookup(p.token)
             # now the more difficult stuff:
-            pre = self.tokens[ti - 1] if ti > 0 else None
-            feats['before'] = voc[pre.lower_].id if pre else -1
-            feats['before_'] = pre.lower_ if pre else ''
-            post = self.tokens[ti + 1] if ti < num_toks else None
-            feats['after'] = voc[post.norm_].id if post else -1
-            feats['after_'] = post.norm_ if post else ''
+            before, after = self._context(ti, max_prob=-5., skip_punct=False,
+                                          keep_neg=True)
+            feats['before'] = voc[before.lower_].id if before else -1
+            feats['before_'] = before.lower_ if before else ''
+            feats['after'] = voc[after.lower_].id if after else -1
+            feats['after_'] = after.lower_ if after else ''
             feats['context'] = (feats['before'], feats['word'], feats['after'])
             feats['context_'] = (feats['before_'], feats['word_'],
                                  feats['after_'])
+            pre = self.tokens[ti - 1] if ti > 0 else None
             feats['prec_int'] = 1 if pre and self._in.lookup(pre) else 0
             feats['prec_adj'] = 1 if pre and pre.pos_ == 'ADJ' else 0
             feats['prec_adv'] = 1 if pre and pre.pos_ == 'ADV' else 0
@@ -458,10 +476,6 @@ def packed_to_array(packed, feat_size, weight=1):
     a[samples, np.arange(samples.size)] = weight
 
     return np.array(a, dtype=int)
-
-
-
-
 
 
 def iter_docs(doc_list_fn, topics=False):
