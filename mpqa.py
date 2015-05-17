@@ -8,6 +8,7 @@ from __future__ import division, print_function, unicode_literals
 import os
 from collections import namedtuple
 from itertools import islice
+import numpy as np
 import pandas as pd
 import spacy.en
 import argparse
@@ -416,6 +417,25 @@ def pack_df(df, columns):
         df_packed[c] = df[c].map(lambda k: pack_map[k])
 
     return df_packed
+
+
+def packed_to_array(packed, feat_size, weight=1):
+    """
+    Converts a feature vector (Series, list, ndarray) with integer ids into a
+    2-dim numpy array whith the ids as the row (1st) index and the samples
+    across the 2nd index. Element [feat_id, sample_no] will have a value of
+    ``weight``, all other values will be 0. ``size`` specifies the number of
+    rows (size of feature set).
+    """
+    samples = np.array(packed, dtype=int)
+    a = np.zeros((feat_size, samples.size))
+    a[samples, np.arange(samples.size)] = weight
+
+    return np.array(a, dtype=int)
+
+
+
+
 
 
 def iter_docs(doc_list_fn, topics=False):
