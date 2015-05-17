@@ -299,6 +299,31 @@ class Doc(object):
         self._polars = sc_tokens
         return self._polars
 
+    def _negation(self, ti, direction):
+        """
+        Returns True if a negating word is present around token with index
+        ``ti`` with ``self._neg_span`` tokens ahead (if ``direction < 0``) or
+        after (if ``direction > 0``) position ``ti``, else False. Terms in
+        ``self._doub_negs`` will be exlcuded from negations.
+        """
+        # check for negation:
+        num_toks = len(self.tokens)
+        if ti == 0 or ti == num_toks - 1:
+            return False
+        ahead = True if direction < 0 else False
+        if ahead:
+            pre_start = max(0, ti - self._neg_span)
+            span = [s.lower_ for s in islice(self.tokens, pre_start, ti)]
+        else:
+            post_end = min(num_toks, ti + self._neg_span)
+            span = [s.lower_ for s in islice(self.tokens, ti, post_end)]
+        bigrams = [' '.join(s) for s in zip(span, span[1:])]
+        span = set(span + bigrams)
+        neg = (True if span.intersection(self._negations) and not
+               span.intersection(self._doub_negs) else False)
+
+        return neg
+
     def _context(self, ti, max_prob=0, keep_neg=True, skip_punct=False):
         """
         Returns a (before, after) tuple of the two tokens surrounding the token
@@ -347,16 +372,12 @@ class Doc(object):
         Contructs feature vectors as a list of dicts, keyed by the items in
         the global `FEAT_COLS`.
         """
-        # TODO: map each item of FEAT_COLS to a helper function that constructs
-        # the corresponding feature
-
         if self._features is not None:
             return self._features
 
         voc = self._nlp.vocab
 
         feats_list = []
-        num_toks = len(self.tokens)
         for p in self.polars:
             feats = {}
             ti = p.token.i
@@ -385,26 +406,8 @@ class Doc(object):
             feats['prec_adv'] = 1 if pre and pre.pos_ == 'ADV' else 0
             feats['is_int'] = 1 if self._in.lookup(p.token) else 0
             # check for negation:
-            if ti == 0:
-                feats['pre_neg'] = 0
-            else:
-                pre_start = max(0, ti - self._neg_span)
-                pre = [s.lower_ for s in islice(self.tokens, pre_start, ti)]
-                bigrams = [' '.join(s) for s in zip(pre, pre[1:])]
-                pre = set(pre + bigrams)
-                feats['pre_neg'] = (
-                        1 if pre.intersection(self._negations) and not
-                        pre.intersection(self._doub_negs) else 0)
-            if ti == num_toks - 1:
-                feats['post_neg'] = 0
-            else:
-                post_end = min(num_toks, ti + self._neg_span)
-                post = [s.lower_ for s in islice(self.tokens, ti, post_end)]
-                bigrams = [' '.join(s) for s in zip(post, post[1:])]
-                post = set(post + bigrams)
-                feats['post_neg'] = (
-                        1 if post.intersection(self._negations) and not
-                        post.intersection(self._doub_negs) else 0)
+            feats['pre_neg'] = 1 if self._negation(ti, -1) else 0
+            feats['post_neg'] = 1 if self._negation(ti, 1) else 0
 
             feats_list.append(feats)
 
