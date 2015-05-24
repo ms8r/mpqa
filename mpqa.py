@@ -6,8 +6,9 @@ Processes MPQA corpus
 
 from __future__ import division, print_function, unicode_literals
 import os
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 from itertools import islice
+import json
 import numpy as np
 import pandas as pd
 import spacy.en
@@ -15,29 +16,82 @@ import argparse
 import logging
 
 
-FEAT_COLS = [
-    'word',         # the subj. clue word (id)
-    'word_',        # the subj. clue word (string)
-    'pos',          # part-of-speach (id)
-    'pos_',         # part-of-speach (string)
-    'before',       # token preceding word (id)
-    'before_',      # token preceding word (string)
-    'after',        # token following word (id)
-    'after_',       # token following word (string)
-    'context',      # tuple (before, word, after)
-    'context_',     # tuple (before, word, after) with strings
-    'pre_neg',      # negation in front of token
-    'post_neg',     # negation after token
-    'pri_pol',      # prior polarity
-    'rel',          # reliability class {strongsubj, weaksubj}
-    'c_pol',        # contextual polarity
-    'is_int',       # is intensifier (boolean)
-    'prec_int',     # preceded by intensifier (boolean)
-    'prec_adj',     # preceded by adjective (boolean)
-    'prec_adv',     # preceded by adverb (boolean)
-    'topic',        # topic (if available)
-]
+PRI_POL_MAP = {
+        'negative': -1,
+        'neutral': 0,
+        'positive': 1,
+        'both': 0,
+        }
 
+ColFlags = namedtuple('ColFlags', ['kind', 'transform', 'ref'])
+# 'kind' can be:
+#   'data'  - keep as data colum
+#   'label' - results/labels for training and testing data
+#   any other value will not be taken over for processing
+# 'transform' can be:
+#   'pack'  -   pack to consequtive ints ('ref' provides map to use)
+#               packed cols will be converted to (0,1) arrays
+#   'raw'   -   keep as is
+#   'map'   -   map values using the map provided under 'ref'
+# 'ref':
+#   Callable to be called to transform 'pack' and 'map' columns. Must accept
+#   one argument. For'map' this will be called for straight element wise
+#   mapping. For 'pack' it is a callalble which as its sole argument will
+#   receive a numpy array with all columns flagged with this callable and which
+#   return a dict which can be used to map each of these columns.
+
+def pos_map(k):
+    pack_map(k)
+
+
+def voc_map(k):
+    pack_map(k)
+
+
+COL_MAP = OrderedDict([
+    ('word', ColFlags('data', 'pack', voc_map)),
+    # the subj. clue word (id)
+    ('word_', ColFlags('', '', None)),
+    # the subj. clue word (string)
+    ('pos', ColFlags('data', 'pack', pos_map)),
+    # part-of-speach (id)
+    ('pos_', ColFlags('', '', None)),
+    # part-of-speach (string)
+    ('before', ColFlags('data', 'pack', voc_map)),
+    # token preceding word (id)
+    ('before_', ColFlags('', '', None)),
+    # token preceding word (string)
+    ('after', ColFlags('data', 'pack', voc_map)),
+    # token following word (id)
+    ('after_', ColFlags('', '', None)),
+    # token following word (string)
+    ('context',  ColFlags('', '', None)),
+    # tuple (before, word, after)
+    ('context_',  ColFlags('', '', None)),
+    # tuple (before, word, after) with strings
+    ('pre_neg',  ColFlags('data', 'raw', None)),
+    # negation in front of token
+    ('post_neg',  ColFlags('data', 'raw', None)),
+    # negation after token
+    ('pri_pol',  ColFlags('data', 'map', lambda k: PRI_POL_MAP[k])),
+    # prior polarity
+    ('rel',  ColFlags('data', 'map', lambda k: 1 if k == 'strongsubj' else 0)),
+    # reliability class {strongsubj, weaksubj}
+    ('c_pol',  ColFlags('label', 'raw', None)),
+    # contextual polarity
+    ('is_int',  ColFlags('data', 'raw', None)),
+    # is intensifier (boolean)
+    ('prec_int',  ColFlags('data', 'raw', None)),
+    # preceded by intensifier (boolean)
+    ('prec_adj',  ColFlags('data', 'raw', None)),
+    # preceded by adjective (boolean)
+    ('prec_adv',  ColFlags('data', 'raw', None)),
+    # preceded by adverb (boolean)
+    ('topic',  ColFlags('', '', None)),
+    # topic (if available)
+])
+
+FEAT_COLS = COL_MAP.keys()
 
 Annot = namedtuple('Annot', ['idnum', 'start', 'end', 'ref',
                              'kind', 'gate', 'attr'])
@@ -45,7 +99,7 @@ GateSent = namedtuple('GateSent', ['start', 'end'])
 SubClue = namedtuple('SubClue', ['rel', 'pri_pol', 'stemmed'])
 Polar = namedtuple('Polar', ['token', 'rel', 'pri_pol', 'c_pol'])
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 class Intensifier(object):
@@ -331,7 +385,7 @@ class Doc(object):
         ``max_prob`` will be considered. Unless ``keep_neg`` is ``False``
         negations will be kept independent of their probability. Whitespace
         tokens will be ignored. If ``skip_punct`` is True, punctuation will
-        also be ignored. Ig no token is found ``None`` is returned in its
+        also be ignored. If no token is found ``None`` is returned in its
         position.
         """
         num_toks = len(self.tokens)
@@ -439,9 +493,20 @@ class Doc(object):
         return self._feat_df
 
 
+def pack_map(a):
+    """
+    Creates a mapping of int ids in a (ndarray) onto consequtive ints and
+    returns this as a dict id: packed_id
+    """
+    u = np.unique(a)
+    pack_map = {int(k): v for k, v in zip(u, np.arange(u.size))}
+
+    return pack_map
+
+
 def make_pack_map(df, columns):
     """
-    Creates a mapping of in int ids in `columns` (list) of DataFrame df onto
+    Creates a mapping of int ids in `columns` (list) of DataFrame df onto
     consequtive ints and returns this a a dict id: packed_id
     """
     items = set()
@@ -455,7 +520,7 @@ def make_pack_map(df, columns):
 
 def pack_df(df, columns):
     """
-    Takes integer ids in `columns` (list) fo df (pandas DataFrame) and maps
+    Takes integer ids in `columns` (list) for df (pandas DataFrame) and maps
     them on a set of consequtive ints. Returns a DataFrame with `columns`.
     """
     pack_map = make_pack_map(df, columns)
@@ -468,15 +533,15 @@ def pack_df(df, columns):
 
 def packed_to_array(packed, feat_size, weight=1):
     """
-    Converts a feature vector (Series, list, ndarray) with integer ids into a
-    2-dim numpy array whith the ids as the row (1st) index and the samples
-    across the 2nd index. Element [feat_id, sample_no] will have a value of
+    Converts a feature vector (array like) with integer ids into a
+    2-dim numpy array whith the samples as the row (1st) index and the ids
+    across the 2nd index. Element [sample_no, feat_id ] will have a value of
     ``weight``, all other values will be 0. ``size`` specifies the number of
-    rows (size of feature set).
+    columns (size of feature set).
     """
     samples = np.array(packed, dtype=int)
-    a = np.zeros((feat_size, samples.size))
-    a[samples, np.arange(samples.size)] = weight
+    a = np.zeros((samples.size, feat_size))
+    a[np.arange(samples.size), samples] = weight
 
     return np.array(a, dtype=int)
 
@@ -510,7 +575,7 @@ def iter_docs(doc_list_fn, topics=False):
 
 def handle_mkfeat(args, **kwargs):
     """
-    Creates a feature DataFrame and stores same as JSON file.
+    Creates a feature DataFrame and pickles same as file.
     """
     sc_path = args.subclues.name
     args.subclues.close()
@@ -528,27 +593,88 @@ def handle_mkfeat(args, **kwargs):
         doc = Doc(args.mpqa, p, f, t, sc_path, int_path)
         df = df.append(doc.feat_df)
 
-    # append columns with packed vocabulary references:
-    sparse_cols = ['word', 'before', 'after']
-    pack_cols = pack_df(df, sparse_cols)
-    for c in sparse_cols:
-        df['p' + c] = pack_cols[c]
+    df.to_pickle(outfile)
 
-    # save df:
-    if args.format == 'json':
-        # TODO: reading JSON back still throws some error
-        # drop text token columns as they screw up json encoding:
-        keep_cols = [c for c in FEAT_COLS if not c.endswith('_')]
-        keep_cols += ['pword', 'pbefore', 'pafter']
-        df[keep_cols].to_json(outfile)
-    elif args.format == 'pickle':
-        df.to_pickle(outfile)
-    else:
-        logging.error('unknown output format %s', args.format)
+
+def handle_mkdata(args, **kwargs):
+    """
+    Turns a feature DataFrame into an ndarray. Will only keep columns flagged
+    as 'data' in COL_MAP and transform a required. Outputs are:
+
+        data
+            The transformed numerical data (all 0,1) in a sparse DataFrame with
+            samples in rows and features across the columns (pickled)
+        labels
+            The target vector(s) as a (dense) DataFrame. The label data is kept
+            as is, i.e. without any transformations (pickled).
+        maps
+            Mappings used to pack features. For example, if the original data
+            had a feature vector [5, 1, 9] the packed version would be
+            [1, 0, 2] and the mapping {1: 0, 5: 1, 9: 2}. `maps` is a
+            dictionary of mapping dicts, keyed by the `__name__` attributes of
+            the `ref` elements in `COL_MAP`.
+    """
+    infile = args.featdf.name
+    args.featdf.close()
+    data_file = args.data.name
+    args.data.close()
+    labels_file = args.labels.name
+    args.labels.close()
+
+    logging.info('reading feature DataFrame from %s...', infile)
+    df_feat = pd.read_pickle(infile)
+    # re-index for alignment with DataFrames created from packed ndarrays:
+    df_feat.index = np.arange(len(df_feat))
+
+    # deal with packing: columns sharing same packing reference in COL_MAP use
+    # the same mapping dict.
+    logging.info('building pack maps and saving in %s', args.maps.name)
+    pack_groups = set([cf.ref for cf in COL_MAP.values()
+                       if cf.transform == 'pack'])
+    maps = {}
+    for p in pack_groups:
+        cols = [c for c, cf in COL_MAP.iteritems() if cf.ref == p]
+        pmap = pack_map(df_feat[cols].values)
+        for c in cols:
+            df_feat[c] = df_feat[c].map(lambda k: pmap[k])
+        maps[p.__name__] = pmap
+    json.dump(maps, args.maps, indent=2)
+    args.maps.close()
+
+    # construct feature ndarray, converting packed columns into [0, 1] arrays:
+    logging.info('constructing new DataFrame...')
+    xdf = pd.DataFrame(index=df_feat.index)
+    for c, cf in COL_MAP.iteritems():
+        logging.info('processing column "%s"', c)
+        if cf.kind != 'data':
+            continue
+        if cf.transform == 'raw':
+            logging.debug("processing as 'raw', len(xdf) is %d", len(xdf))
+            xdf = pd.concat([xdf, df_feat[c].astype('int32')], axis=1)
+            logging.debug("after concat, len(xdf) is %d", len(xdf))
+        if cf.transform == 'map':
+            xdf = pd.concat([xdf, df_feat[c].map(cf.ref)], axis=1)
+        if cf.transform == 'pack':
+            feat_size = len(maps[cf.ref.__name__])
+            logging.debug('number of packed features: %d', feat_size)
+            width = int(np.log10(feat_size)) + 1
+            a = packed_to_array(df_feat[c], feat_size, weight=1)
+            logging.debug('packed array shape: %s', a.shape)
+            acols = ['{colname}_{index:0{width}}'.format(colname=c,
+                     width=width, index=i) for i in xrange(feat_size)]
+            xdf = pd.concat([xdf, pd.DataFrame(a, columns=acols)], axis=1)
+        logging.debug('shape of xdf: %s', xdf.values.shape)
+    xdf.to_sparse(fill_value=0).to_pickle(data_file)
+    logging.info('new DataFrame pickled in %s', data_file)
+
+    # extract and save labels:
+    logging.info('extracting labels and pickling in %s', labels_file)
+    label_cols = [c for c, cf in COL_MAP.iteritems() if cf.kind == 'label']
+    df_feat[label_cols].to_pickle(labels_file)
 
 
 def setup_parser_mkfeat(p):
-    p.add_argument('--mpqa', default='.', help='path to MPQA root directory; '
+    p.add_argument('--mpqa', default='.', help='path to mpqa root directory; '
                    'assumes current dir if not provided')
     p.add_argument('--subclues', metavar='FILE',
                    type=argparse.FileType('r'), required=True,
@@ -559,20 +685,34 @@ def setup_parser_mkfeat(p):
     p.add_argument('--doclist', metavar='FILE',
                    type=argparse.FileType('r'), required=True,
                    help='path to doclist file')
-    p.add_argument('--format', choices=['pickle', 'json'], default='pickle',
-                    help='format in which to output DataFrame; defaults to '
-                    'pickle; WARNING: JSON may not be able to (de-)serialize '
-                    'correctly')
     p.add_argument('--output', metavar='FILE',
                    type=argparse.FileType('w'), required=True,
-                   help='output file in which to store DataFrame')
+                   help='output file in which to store pickled dataframe')
+
+
+def setup_parser_mkdata(p):
+    p.add_argument('--featdf', metavar='FILE',
+                   type=argparse.FileType('r'), required=True,
+                   help='path to pickled features DataFrame')
+    p.add_argument('--data', metavar='FILE',
+                   type=argparse.FileType('w'), required=True,
+                   help='output file in which to store data '
+                   '(pickled DataFrame)')
+    p.add_argument('--labels', metavar='FILE',
+                   type=argparse.FileType('w'), required=True,
+                   help='output file in which to store labels '
+                   '(pickled DataFrame)')
+    p.add_argument('--maps', metavar='FILE',
+                   type=argparse.FileType('w'), required=True,
+                   help='output file in which to store packing maps (JSON)')
 
 
 # The _task_handler dictionary maps each 'command' to a (task_handler,
 # parser_setup_handler) tuple.  Subparsers are initialized in __main__  (with
 # the handler function's doc string as help text) and then the appropriate
 # setup handler is called to add the details.
-_task_handler = {'mkfeat': (handle_mkfeat, setup_parser_mkfeat), }
+_task_handler = {'mkfeat': (handle_mkfeat, setup_parser_mkfeat),
+                 'mkdata': (handle_mkdata, setup_parser_mkdata)}
 
 
 if __name__ == '__main__':
