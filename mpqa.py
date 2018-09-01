@@ -11,7 +11,7 @@ from itertools import islice
 import json
 import numpy as np
 import pandas as pd
-import spacy.en
+import spacy.lang.en
 import argparse
 import logging
 
@@ -249,7 +249,7 @@ class Doc(object):
     # number of tokens to check before and after for neagtion:
     _neg_span = 4
 
-    _nlp = spacy.en.English()
+    _nlp = spacy.lang.en.English()
 
     def __init__(self, mpqa_dir, path, fname, topic, sc_path, int_path):
         """
